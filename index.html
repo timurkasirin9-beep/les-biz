@@ -1,0 +1,2296 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Лесной Бизнес — Казино Мелстроя с Текстурами + Босс Дерево</title>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background: #87CEEB; 
+            user-select: none;
+        }
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        #ui {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            color: white;
+            font-family: Arial, sans-serif;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            pointer-events: none;
+            z-index: 10;
+        }
+        #bossUI {
+            display: none;
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 400px;
+            background: rgba(20, 0, 0, 0.85);
+            border: 2px solid #e74c3c;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            z-index: 20;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        #bossHPBarContainer {
+            width: 100%;
+            height: 20px;
+            background: #333;
+            border-radius: 5px;
+            margin-top: 5px;
+            overflow: hidden;
+            border: 1px solid #ff0000;
+        }
+        #bossHPBar {
+            width: 100%;
+            height: 100%;
+            background: #e74c3c;
+            transition: width 0.1s linear;
+        }
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 10px;
+            height: 10px;
+            background: white;
+            border: 1px solid black;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 10;
+        }
+        #hint {
+            position: absolute;
+            bottom: 110px;
+            width: 100%;
+            text-align: center;
+            color: white;
+            font-family: Arial, sans-serif;
+            font-size: 16px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            pointer-events: none;
+            z-index: 10;
+        }
+        #hotbar {
+            position: absolute;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 12px;
+            border: 2px solid #555;
+            z-index: 50;
+        }
+        .slot {
+            width: 70px;
+            height: 70px;
+            background: rgba(40, 40, 40, 0.8);
+            border: 2px solid #777;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-family: Arial, sans-serif;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+        .slot.hidden {
+            display: none !important;
+        }
+        .slot.active {
+            border-color: #2ecc71;
+            background: rgba(46, 204, 113, 0.3);
+            transform: scale(1.05);
+        }
+        .slot .key-num {
+            position: absolute;
+            top: 3px;
+            left: 5px;
+            font-size: 10px;
+            color: #aaa;
+        }
+        .slot .icon {
+            font-size: 20px;
+            margin-top: 2px;
+        }
+        .slot .durability-bar {
+            width: 50px;
+            height: 5px;
+            background: #555;
+            border-radius: 3px;
+            margin-top: 4px;
+            overflow: hidden;
+        }
+        .slot .durability-fill {
+            width: 100%;
+            height: 100%;
+            background: #2ecc71;
+        }
+
+        #chopProgress {
+            display: none;
+            position: absolute;
+            top: 56%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 150px;
+            height: 12px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid white;
+            border-radius: 6px;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: 10;
+        }
+        #progressBar {
+            width: 0%;
+            height: 100%;
+            background: #2ecc71;
+            transition: width 0.05s linear;
+        }
+
+        #game-notification {
+            position: fixed;
+            bottom: 140px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-family: Arial, sans-serif;
+            font-size: 16px;
+            border: 2px solid #2ecc71;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            pointer-events: none;
+            text-align: center;
+        }
+        #game-notification.show {
+            opacity: 1;
+        }
+
+        #shopMenu, #devMenu, #deathMenu, #fixicsMenu, #casinoMenu {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(20, 20, 20, 0.95);
+            border: 2px solid #2ecc71;
+            padding: 25px;
+            border-radius: 12px;
+            color: white;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            z-index: 100;
+            width: 380px;
+        }
+        #shopMenu h3, #fixicsMenu h3 { margin-top: 0; color: #2ecc71; }
+        
+        #casinoMenu {
+            border-color: #e74c3c;
+            background: rgba(30, 10, 10, 0.95);
+            width: 420px;
+        }
+        #casinoMenu h3 { color: #f1c40f; font-size: 22px; }
+
+        #fixicsMenu {
+            border-color: #f1c40f;
+            background: rgba(40, 30, 10, 0.95);
+        }
+        #fixicsMenu h3 { color: #f1c40f; }
+
+        #devMenu {
+            background: rgba(30, 15, 40, 0.95);
+            border: 2px solid #9b59b6;
+            z-index: 200;
+            width: 380px;
+        }
+        #devMenu h3 { margin-top: 0; color: #9b59b6; }
+
+        #deathMenu {
+            background: rgba(80, 10, 10, 0.95);
+            border: 2px solid #e74c3c;
+            z-index: 300;
+        }
+        #deathMenu h2 { color: #e74c3c; margin-top: 0; }
+        
+        .shop-btn, .casino-btn, .fix-btn, .dev-btn {
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin: 6px 0;
+            width: 100%;
+            border-radius: 6px;
+            font-size: 15px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .shop-btn { background: #2ecc71; }
+        .shop-btn:hover { background: #27ae60; }
+        
+        .casino-btn { background: #e74c3c; font-weight: bold; font-size: 16px; }
+        .casino-btn:hover { background: #c0392b; }
+
+        .fix-btn { background: #f39c12; }
+        .fix-btn:hover { background: #d35400; }
+        
+        .dev-btn { background: #9b59b6; }
+        .dev-btn:hover { background: #8e44ad; }
+        
+        .close-btn { background: #e74c3c !important; }
+        .close-btn:hover { background: #c0392b !important; }
+
+        #slotsResult {
+            font-size: 26px;
+            letter-spacing: 10px;
+            background: rgba(0,0,0,0.6);
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+            color: #f1c40f;
+            border: 1px solid #f1c40f;
+        }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <h2>Лесной Бизнес (Textured)</h2>
+        <p>Время суток: <span id="timeOfDay">День ☀️</span></p>
+        <p>Здоровье: <span id="health">100</span> ❤️</p>
+        <p>Дровишки: <span id="wood">0</span></p>
+        <p>Монеты: <span id="money">30</span></p>
+        <p>Инструмент: <span id="axeLevel">Обычный топор</span></p>
+        <p>Статус Фиксиков: <span id="fixicsStatus" style="color: #e74c3c;">Ожидание (1:30)</span></p>
+        <p>Таролог Каляка: <span id="tarotStatus" style="color: #dda0dd;">Следующая карта через 30с</span></p>
+        <p>Популяция кабанов: <span id="boarsCount">🐗 4</span></p>
+        <p>Режим: <span id="mode">Пешком</span></p>
+    </div>
+
+    <div id="bossUI">
+        <h3 id="bossTitle" style="margin:0; color:#e74c3c;">🌲 БОСС: ДРЕВНИЙ ЭЕН 🌲</h3>
+        <div id="bossHPBarContainer"><div id="bossHPBar"></div></div>
+    </div>
+    
+    <div id="crosshair"></div>
+    <div id="chopProgress"><div id="progressBar"></div></div>
+    <div id="game-notification"></div>
+    <div id="hint">ЛКМ — рубить / стрелять / ставить стену | 1-4 — слоты | WASD — ходить| Подойдите к машине с дровами для продажи</div>
+
+    <div id="hotbar">
+        <div class="slot active" id="slot1" onclick="selectSlot(1)">
+            <span class="key-num">1</span><span class="icon" id="iconSlot1">🪓</span><span id="nameSlot1">Топор</span>
+            <div class="durability-bar"><div class="durability-fill" id="durFill1"></div></div>
+        </div>
+        <div class="slot" id="slot2" onclick="selectSlot(2)">
+            <span class="key-num">2</span><span class="icon" id="iconSlot2">🔫</span><span id="nameSlot2">Пистолет</span>
+            <div class="durability-bar"><div class="durability-fill" id="durFill2"></div></div>
+        </div>
+        <div class="slot hidden" id="slot3" onclick="selectSlot(3)">
+            <span class="key-num">3</span><span class="icon" id="iconSlot3">📦</span><span id="nameSlot3">Куб</span>
+            <div class="durability-bar"><div class="durability-fill" id="durFill3"></div></div>
+        </div>
+        <div class="slot" id="slot4" onclick="selectSlot(4)">
+            <span class="key-num">4</span><span class="icon" id="iconSlot4">🧱</span><span id="nameSlot4">Стена</span>
+            <div class="durability-bar"><div class="durability-fill" id="durFill4"></div></div>
+        </div>
+    </div>
+
+    <div id="shopMenu">
+        <h3>Магазин Снаряжения</h3>
+        <p>Купи улучшенные инструменты и оружие:</p>
+        <button class="shop-btn" id="buyGoldAxeBtn" onclick="buyGoldAxe()">Купить Золотой топор (50 монет)</button>
+        <button class="shop-btn" id="buyChainsawBtn" onclick="buyChainsaw()">Купить Бензопилу (150 монет)</button>
+        <button class="shop-btn" id="buyPistolBtn" onclick="buyPistol()">Купить Пистолет (200 монет)</button>
+        <button class="shop-btn" id="buyAxeCannonBtn" onclick="buyAxeCannon()">Купить АК-47 (300 монет)</button>
+        <button class="shop-btn" id="buyExplosiveCubeBtn" onclick="buyExplosiveCube()">Купить Взрывной куб (500 монет)</button>
+        <button class="shop-btn close-btn" onclick="closeShop()">Закрыть меню</button>
+    </div>
+
+    <div id="casinoMenu">
+        <h3>🎰 Казино Мелстроя 🎰</h3>
+        <p>Добро пожаловать в легендарное казино! Испытай удачу на слотах:</p>
+        <div id="slotsResult">🍒 🍋 🍊</div>
+        <p id="casinoMessage">Крути барабан и сорви куш!</p>
+        <button class="casino-btn" onclick="playCasino(20)">Крутить слоты (Цена: 20 🪙)</button>
+        <button class="casino-btn" style="background: #f39c12;" onclick="playCasinoAll()">🎲 Поставить ВСЕ монеты!</button>
+        <button class="shop-btn close-btn" onclick="closeCasinoMenu()">Уйти из казино</button>
+    </div>
+
+    <div id="fixicsMenu">
+        <h3>🛠️ Мастерская Фиксиков</h3>
+        <p>Починим текущий предмет за 30 монет:</p>
+        <button class="fix-btn" id="fixBtn1" onclick="repairTool(1)">Починить Слот 1 (30 🪙)</button>
+        <button class="fix-btn" id="fixBtn2" onclick="repairTool(2)">Починить Слот 2 (30 🪙)</button>
+        <button class="fix-btn hidden" id="fixBtn3" onclick="repairTool(3)">Починить Слот 3 (30 🪙)</button>
+        <button class="fix-btn" id="fixBtn4" onclick="repairTool(4)">Починить Слот 4 (30 🪙)</button>
+        <button class="shop-btn close-btn" onclick="closeFixicsMenu()">Отпустить Фиксиков</button>
+    </div>
+
+    <div id="devMenu">
+        <h3>🛠️ Меню Разработчика</h3>
+        <button class="dev-btn" onclick="devAddMoney(100)">+100 Монет</button>
+        <button class="dev-btn" onclick="devAddMoney(1000)">+1,000 Монет</button>
+        <button class="dev-btn" onclick="devAddWood(50)">+50 Дров</button>
+        <button class="dev-btn" onclick="devSpawnFixics()">📦 Вызвать Фиксиков</button>
+        <button class="dev-btn" onclick="devTriggerTarot()">🔮 Заставить Каляку гадать</button>
+        <button class="dev-btn" onclick="devSpawnBossDirect()">🌲 Спавн Босса Дерева</button>
+        <button class="dev-btn" onclick="devUnlockAll()">Открыть всё</button>
+        <button class="shop-btn close-btn" onclick="closeDevMenu()">Закрыть (F3)</button>
+    </div>
+
+    <div id="deathMenu">
+        <h2>💀 ВЫ ПОГИБЛИ</h2>
+        <p>Дикие деревья, босс или опасная молитва сгубили вас...</p>
+        <button class="shop-btn" onclick="respawnPlayer()">Возродиться у дома</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
+    <script>
+        function showNotification(text) {
+            const notif = document.getElementById('game-notification');
+            notif.innerText = text;
+            notif.classList.add('show');
+            setTimeout(() => {
+                notif.classList.remove('show');
+            }, 3000);
+        }
+
+        function createProceduralTexture(type) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+
+            if (type === 'grass') {
+                ctx.fillStyle = '#3b7a2b';
+                ctx.fillRect(0, 0, 256, 256);
+                for (let i = 0; i < 2000; i++) {
+                    ctx.fillStyle = Math.random() > 0.5 ? '#2e6120' : '#4d9e38';
+                    ctx.fillRect(Math.random() * 256, Math.random() * 256, 2, 6);
+                }
+            } else if (type === 'bark') {
+                ctx.fillStyle = '#5c4033';
+                ctx.fillRect(0, 0, 256, 256);
+                ctx.fillStyle = '#3d261a';
+                for (let i = 0; i < 40; i++) {
+                    ctx.fillRect(Math.random() * 256, 0, 4 + Math.random() * 6, 256);
+                }
+            } else if (type === 'wild_bark') {
+                ctx.fillStyle = '#2b0f05';
+                ctx.fillRect(0, 0, 256, 256);
+                ctx.fillStyle = '#140502';
+                for (let i = 0; i < 50; i++) {
+                    ctx.fillRect(Math.random() * 256, 0, 6 + Math.random() * 8, 256);
+                }
+            } else if (type === 'wood_planks') {
+                ctx.fillStyle = '#8B4513';
+                ctx.fillRect(0, 0, 256, 256);
+                ctx.strokeStyle = '#5c2c16';
+                ctx.lineWidth = 4;
+                for (let y = 0; y < 256; y += 32) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(256, y);
+                    ctx.stroke();
+                }
+            } else if (type === 'brick') {
+                ctx.fillStyle = '#b22222';
+                ctx.fillRect(0, 0, 256, 256);
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 3;
+                for (let y = 0; y < 256; y += 32) {
+                    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(256, y); ctx.stroke();
+                }
+                for (let x = 0; x < 256; x += 64) {
+                    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 256); ctx.stroke();
+                }
+            }
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            return texture;
+        }
+
+        const textures = {
+            grass: createProceduralTexture('grass'),
+            bark: createProceduralTexture('bark'),
+            wildBark: createProceduralTexture('wild_bark'),
+            planks: createProceduralTexture('wood_planks'),
+            brick: createProceduralTexture('brick')
+        };
+        textures.grass.repeat.set(20, 20);
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87CEEB);
+        scene.fog = new THREE.FogExp2(0x87CEEB, 0.012);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.BasicShadowMap; 
+        document.body.appendChild(renderer.domElement);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        
+        const sun = new THREE.DirectionalLight(0xfff5e6, 0.9);
+        sun.position.set(30, 50, 30);
+        sun.castShadow = true;
+        sun.shadow.mapSize.width = 1024;
+        sun.shadow.mapSize.height = 1024;
+        sun.shadow.camera.near = 0.5;
+        sun.shadow.camera.far = 150;
+        const d = 60;
+        sun.shadow.camera.left = -d;
+        sun.shadow.camera.right = d;
+        sun.shadow.camera.top = d;
+        sun.shadow.camera.bottom = -d;
+        scene.add(sun);
+
+        function getTerrainHeight(x, z) {
+            if (x > 15 && x < 35) return 0;
+            return Math.sin(x * 0.1) * Math.cos(z * 0.1) * 1.8 + Math.sin(x * 0.03) * 0.8;
+        }
+
+        const groundGeo = new THREE.PlaneGeometry(120, 120, 40, 40);
+        groundGeo.rotateX(-Math.PI / 2);
+        
+        const posAttr = groundGeo.attributes.position;
+        for (let i = 0; i < posAttr.count; i++) {
+            const px = posAttr.getX(i);
+            const pz = posAttr.getZ(i);
+            posAttr.setY(i, getTerrainHeight(px, pz));
+        }
+        groundGeo.computeVertexNormals();
+
+        const ground = new THREE.Mesh(
+            groundGeo,
+            new THREE.MeshStandardMaterial({ map: textures.grass, roughness: 0.9 })
+        );
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        const river = new THREE.Mesh(
+            new THREE.PlaneGeometry(12, 120),
+            new THREE.MeshStandardMaterial({ color: 0x2e86c1, roughness: 0.2, transparent: true, opacity: 0.85 })
+        );
+        river.rotation.x = -Math.PI / 2;
+        river.position.set(25, 0.06, 0);
+        scene.add(river);
+
+        const colliders = [];
+        colliders.defineBox = function(x, z, sizeX, sizeZ) {
+            this.push({ type: 'box', x: x, z: z, rx: sizeX / 2, rz: sizeZ / 2 });
+        };
+
+        const altarGroup = new THREE.Group();
+        const altarBase = new THREE.Mesh(
+            new THREE.BoxGeometry(4, 1, 4),
+            new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.5 })
+        );
+        altarBase.position.y = 0.5;
+        altarGroup.add(altarBase);
+        const altarPillar = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.8, 1.2, 2.5, 16),
+            new THREE.MeshStandardMaterial({ color: 0x7f8c8d, metalness: 0.3 })
+        );
+        altarPillar.position.y = 2.25;
+        altarGroup.add(altarPillar);
+        const altarCrystal = new THREE.Mesh(
+            new THREE.OctahedronGeometry(0.8),
+            new THREE.MeshStandardMaterial({ color: 0xe74c3c, emissive: 0xe74c3c, emissiveIntensity: 0.8 })
+        );
+        altarCrystal.position.y = 4.0;
+        altarGroup.add(altarCrystal);
+        
+        altarGroup.position.set(0, getTerrainHeight(0, -35), -35);
+        scene.add(altarGroup);
+        colliders.defineBox(0, -35, 3.8, 3.8);
+        const altarPos = altarGroup.position.clone();
+        let bossActive = false;
+        let bossInstance = null;
+
+        let bossData = {
+            hp: 500,
+            maxHp: 500,
+            attackTimer: 0.0,
+            attackType: 0,
+            phase: 'idle',
+            targetPos: new THREE.Vector3(),
+            trainTrees: []
+        };
+
+        const placedWalls = [];
+        let doubleWoodActive = false;
+
+        const flyingPlates = [];
+        const plateGeo = new THREE.CylinderGeometry(2.5, 2.8, 0.3, 32);
+        const plateMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.1, metalness: 0.2 });
+        
+        for (let i = 0; i < 4; i++) {
+            const plate = new THREE.Mesh(plateGeo, plateMat);
+            plate.castShadow = true;
+            plate.position.set(
+                (Math.random() - 0.5) * 80,
+                35 + Math.random() * 15,
+                (Math.random() - 0.5) * 80
+            );
+            scene.add(plate);
+            flyingPlates.push({
+                mesh: plate,
+                angle: Math.random() * Math.PI * 2,
+                radius: 30 + Math.random() * 30,
+                speed: 1.5 + Math.random() * 1.5,
+                height: plate.position.y
+            });
+        }
+
+        const caveGroup = new THREE.Group();
+        const caveWallMat = new THREE.MeshStandardMaterial({ color: 0x5e5e5e, roughness: 0.95 });
+        
+        const leftHill = new THREE.Mesh(new THREE.BoxGeometry(6, 4.5, 6), caveWallMat);
+        leftHill.position.set(-4, 1.5, 0);
+        const rightHill = new THREE.Mesh(new THREE.BoxGeometry(6, 4.5, 6), caveWallMat);
+        rightHill.position.set(4, 1.5, 0);
+        const topHill = new THREE.Mesh(new THREE.BoxGeometry(10, 3.5, 6), caveWallMat);
+        topHill.position.set(0, 4.0, 0);
+        
+        caveGroup.add(leftHill, rightHill, topHill);
+        
+        const caveEntrance = new THREE.Mesh(new THREE.BoxGeometry(3.2, 3.0, 5), new THREE.MeshBasicMaterial({ color: 0x050505 }));
+        caveEntrance.position.set(0, 1.2, -1);
+        caveGroup.add(caveEntrance);
+
+        caveGroup.position.set(-25, getTerrainHeight(-25, 15) - 0.8, 15);
+        scene.add(caveGroup);
+        colliders.defineBox(-25, 15, 8.0, 5.0);
+        const cavePos = caveGroup.position.clone();
+
+        const houseGroup = new THREE.Group();
+        const houseBody = new THREE.Mesh(
+            new THREE.BoxGeometry(4, 3, 4),
+            new THREE.MeshStandardMaterial({ map: textures.planks, roughness: 0.8 })
+        );
+        houseBody.position.y = 1.5;
+        houseBody.castShadow = true;
+        houseBody.receiveShadow = true;
+        houseGroup.add(houseBody);
+        
+        const roof = new THREE.Mesh(
+            new THREE.ConeGeometry(3.2, 2, 4),
+            new THREE.MeshStandardMaterial({ color: 0x5C2c16, roughness: 0.7 })
+        );
+        roof.position.y = 4;
+        roof.rotation.y = Math.PI / 4;
+        roof.castShadow = true;
+        houseGroup.add(roof);
+        houseGroup.position.set(-8, getTerrainHeight(-8, -2), -2);
+        scene.add(houseGroup);
+        colliders.defineBox(-8, -2, 3.8, 3.8);
+
+        const mosqueGroup = new THREE.Group();
+        const mosqueBody = new THREE.Mesh(
+            new THREE.BoxGeometry(5, 3.5, 5),
+            new THREE.MeshStandardMaterial({ map: textures.brick, roughness: 0.7 })
+        );
+        mosqueBody.position.y = 1.75;
+        mosqueBody.castShadow = true;
+        mosqueGroup.add(mosqueBody);
+
+        const mosqueDome = new THREE.Mesh(
+            new THREE.SphereGeometry(2.2, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2),
+            new THREE.MeshStandardMaterial({ color: 0x27ae60, roughness: 0.4 })
+        );
+        mosqueDome.position.y = 3.5;
+        mosqueDome.castShadow = true;
+        mosqueGroup.add(mosqueDome);
+
+        const minaret = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.4, 0.5, 6, 8),
+            new THREE.MeshStandardMaterial({ color: 0xbdc3c7, roughness: 0.5 })
+        );
+        minaret.position.set(2.5, 3, 2.5);
+        minaret.castShadow = true;
+        mosqueGroup.add(minaret);
+
+        mosqueGroup.position.set(-25, getTerrainHeight(-25, -25), -25);
+        scene.add(mosqueGroup);
+        const mosquePos = mosqueGroup.position.clone();
+        colliders.defineBox(-25, -25, 4.8, 4.8);
+        let mosqueExists = true;
+
+        const sellerHouse = new THREE.Group();
+        const sHouseBody = new THREE.Mesh(
+            new THREE.BoxGeometry(4, 3, 4),
+            new THREE.MeshStandardMaterial({ map: textures.planks, roughness: 0.8 })
+        );
+        sHouseBody.position.y = 1.5;
+        sHouseBody.castShadow = true;
+        sellerHouse.add(sHouseBody);
+        
+        const sRoof = new THREE.Mesh(
+            new THREE.ConeGeometry(3.2, 2, 4),
+            new THREE.MeshStandardMaterial({ color: 0x333333 })
+        );
+        sRoof.position.y = 4;
+        sRoof.rotation.y = Math.PI / 4;
+        sellerHouse.add(sRoof);
+        sellerHouse.position.set(18, getTerrainHeight(18, -5), -5);
+        scene.add(sellerHouse);
+        colliders.defineBox(18, -5, 3.8, 3.8);
+
+        const casinoGroup = new THREE.Group();
+        const casinoBody = new THREE.Mesh(
+            new THREE.BoxGeometry(6, 4, 6),
+            new THREE.MeshStandardMaterial({ map: textures.brick, roughness: 0.3 })
+        );
+        casinoBody.position.y = 2;
+        casinoBody.castShadow = true;
+        casinoGroup.add(casinoBody);
+
+        const casinoRoof = new THREE.Mesh(
+            new THREE.BoxGeometry(6.4, 0.6, 6.4),
+            new THREE.MeshStandardMaterial({ color: 0xe74c3c, metalness: 0.5 })
+        );
+        casinoRoof.position.y = 4.3;
+        casinoGroup.add(casinoRoof);
+
+        const neonSign = new THREE.Mesh(
+            new THREE.BoxGeometry(4.5, 1.0, 0.2),
+            new THREE.MeshStandardMaterial({ color: 0xf1c40f, emissive: 0xf1c40f, emissiveIntensity: 0.8 })
+        );
+        neonSign.position.set(0, 3.0, 3.1);
+        casinoGroup.add(neonSign);
+
+        casinoGroup.position.set(18, getTerrainHeight(18, 6), 6);
+        scene.add(casinoGroup);
+        colliders.defineBox(18, 6, 5.8, 5.8);
+
+        const fixicsGroup = new THREE.Group();
+        const nolikBodyMat = new THREE.MeshStandardMaterial({ color: 0x2980b9 });
+        const nolikHairMat = new THREE.MeshStandardMaterial({ color: 0x3498db, emissive: 0x113355 });
+        const simkaBodyMat = new THREE.MeshStandardMaterial({ color: 0xd35400 });
+        const simkaHairMat = new THREE.MeshStandardMaterial({ color: 0xf39c12, emissive: 0x553300 });
+        const faceMat = new THREE.MeshStandardMaterial({ color: 0xffe0bd });
+
+        const nolik = new THREE.Group();
+        const nBody = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.35, 0.15), nolikBodyMat);
+        nBody.position.y = 0.175;
+        nolik.add(nBody);
+        const nHead = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.25, 0.2), faceMat);
+        nHead.position.y = 0.45;
+        nolik.add(nHead);
+        const nHair = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.3, 4), nolikHairMat);
+        nHair.position.y = 0.7;
+        nHair.rotation.y = Math.PI / 4;
+        nolik.add(nHair);
+        nolik.position.set(-0.3, 0.05, 0);
+
+        const simka = new THREE.Group();
+        const sBody = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.4, 0.15), simkaBodyMat);
+        sBody.position.y = 0.2;
+        simka.add(sBody);
+        const sHead = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.25, 0.2), faceMat);
+        sHead.position.y = 0.5;
+        simka.add(sHead);
+        const sHair = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.1, 0.2, 8), simkaHairMat);
+        sHair.position.y = 0.7;
+        simka.add(sHair);
+        simka.position.set(0.3, 0.05, 0);
+
+        fixicsGroup.add(nolik, simka);
+        fixicsGroup.position.set(-11, getTerrainHeight(-11, 1), 1);
+        fixicsGroup.visible = false;
+        scene.add(fixicsGroup);
+
+        const seller = new THREE.Group();
+        const sellerBody = new THREE.Mesh(
+            new THREE.BoxGeometry(1.2, 1.2, 0.8),
+            new THREE.MeshStandardMaterial({ color: 0x2ecc71 })
+        );
+        sellerBody.position.y = 0.6;
+        seller.add(sellerBody);
+        const sellerHead = new THREE.Mesh(
+            new THREE.SphereGeometry(0.4, 16, 16),
+            new THREE.MeshStandardMaterial({ color: 0xf5cba7 })
+        );
+        sellerHead.position.set(0, 1.6, 0);
+        seller.add(sellerHead);
+        seller.position.set(15, getTerrainHeight(15, -5), -5);
+        scene.add(seller);
+        colliders.defineBox(15, -5, 1.2, 1.2);
+
+        const buyerCar = new THREE.Group();
+        const carCabin = new THREE.Mesh(
+            new THREE.BoxGeometry(2, 1.5, 2),
+            new THREE.MeshStandardMaterial({ color: 0xe74c3c, metalness: 0.4 })
+        );
+        carCabin.position.set(0, 1.2, 1);
+        buyerCar.add(carCabin);
+
+        const carBody = new THREE.Mesh(
+            new THREE.BoxGeometry(2.2, 1.2, 3),
+            new THREE.MeshStandardMaterial({ color: 0x34495e, roughness: 0.6 })
+        );
+        carBody.position.set(0, 1.1, -1);
+        buyerCar.add(carBody);
+
+        const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+        const wheelGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.4, 12);
+        wheelGeo.rotateZ(Math.PI / 2);
+
+        [-1.2, 1.2].forEach(x => {
+            [-1.5, 1.0].forEach(z => {
+                const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+                wheel.position.set(x, 0.4, z);
+                buyerCar.add(wheel);
+            });
+        });
+        buyerCar.position.set(-3, getTerrainHeight(-3, -8), -8);
+        scene.add(buyerCar);
+        const buyerCarPos = buyerCar.position.clone();
+        colliders.defineBox(-3, -8, 2.4, 3.2);
+
+        function createBoarModel(isFemale = false) {
+            const boar = new THREE.Group();
+            const mainColor = isFemale ? 0x7a4a2e : 0x5c3a21;
+            const darkColor = isFemale ? 0x4a2e1c : 0x3d2514;
+            const scaleFactor = isFemale ? 0.9 : 1.0;
+            boar.scale.set(scaleFactor, scaleFactor, scaleFactor);
+
+            const boarBody = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.8, 1.6), new THREE.MeshStandardMaterial({ color: mainColor, roughness: 0.8 }));
+            boarBody.position.y = 0.5;
+            boar.add(boarBody);
+
+            const boarHead = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.7), new THREE.MeshStandardMaterial({ color: mainColor, roughness: 0.8 }));
+            boarHead.position.set(0, 0.6, 1.05);
+            boar.add(boarHead);
+
+            const snout = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.3, 0.2), new THREE.MeshStandardMaterial({ color: darkColor, roughness: 0.9 }));
+            snout.position.set(0, 0.55, 1.42);
+            boar.add(snout);
+
+            const earGeo = new THREE.BoxGeometry(0.12, 0.2, 0.1);
+            const leftEar = new THREE.Mesh(earGeo, new THREE.MeshStandardMaterial({ color: darkColor }));
+            leftEar.position.set(0.25, 0.95, 0.95);
+            leftEar.rotation.z = -0.2;
+            boar.add(leftEar);
+
+            const rightEar = new THREE.Mesh(earGeo, new THREE.MeshStandardMaterial({ color: darkColor }));
+            rightEar.position.set(-0.25, 0.95, 0.95);
+            rightEar.rotation.z = 0.2;
+            boar.add(rightEar);
+
+            const legGeo = new THREE.BoxGeometry(0.2, 0.4, 0.2);
+            [-0.32, 0.32].forEach(x => {
+                [-0.5, 0.5].forEach(z => {
+                    const leg = new THREE.Mesh(legGeo, new THREE.MeshStandardMaterial({ color: darkColor }));
+                    leg.position.set(x, 0.2, z);
+                    boar.add(leg);
+                });
+            });
+
+            return boar;
+        }
+
+        const boars = [];
+        const boarData = [];
+        for (let i = 0; i < 4; i++) {
+            const b = createBoarModel(i > 0);
+            let rx, rz;
+            if (i === 0) {
+                rx = -8 + 2.5;
+                rz = -2;
+            } else {
+                rx = (Math.random() - 0.5) * 60;
+                rz = (Math.random() - 0.5) * 60;
+            }
+            b.position.set(rx, getTerrainHeight(rx, rz), rz);
+            scene.add(b);
+            boars.push(b);
+            boarData.push({
+                targetX: rx,
+                targetZ: rz,
+                timer: Math.random() * 5
+            });
+        }
+        let totalBoarsCount = boars.length;
+        const MAX_BOARS = 10;
+        let hasMatedThisNight = false;
+
+        const toolGroup = new THREE.Group();
+        
+        const normalAxe = new THREE.Group();
+        const handle = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.02, 0.02, 0.6, 6),
+            new THREE.MeshStandardMaterial({ map: textures.planks })
+        );
+        normalAxe.add(handle);
+        const blade = new THREE.Mesh(
+            new THREE.BoxGeometry(0.06, 0.2, 0.3),
+            new THREE.MeshStandardMaterial({ color: 0xCCCCCC, metalness: 0.8 })
+        );
+        blade.position.set(0, 0.2, 0.1);
+        normalAxe.add(blade);
+        toolGroup.add(normalAxe);
+
+        const goldAxe = new THREE.Group();
+        const gHandle = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.025, 0.025, 0.65, 6),
+            new THREE.MeshStandardMaterial({ color: 0x5c3a21 })
+        );
+        goldAxe.add(gHandle);
+        const gBlade = new THREE.Mesh(
+            new THREE.BoxGeometry(0.08, 0.25, 0.35),
+            new THREE.MeshStandardMaterial({ color: 0xFFD700, metalness: 0.9, roughness: 0.1 })
+        );
+        gBlade.position.set(0, 0.22, 0.1);
+        goldAxe.add(gBlade);
+        goldAxe.visible = false;
+        toolGroup.add(goldAxe);
+
+        const chainsaw = new THREE.Group();
+        const csBody = new THREE.Mesh(
+            new THREE.BoxGeometry(0.15, 0.25, 0.5),
+            new THREE.MeshStandardMaterial({ color: 0xe74c3c, metalness: 0.5 })
+        );
+        chainsaw.add(csBody);
+        
+        const csBlade = new THREE.Mesh(
+            new THREE.BoxGeometry(0.04, 0.12, 0.6),
+            new THREE.MeshStandardMaterial({ color: 0xDDDDDD, metalness: 0.9 })
+        );
+        csBlade.position.set(0, -0.05, -0.35);
+        chainsaw.add(csBlade);
+        chainsaw.visible = false;
+        toolGroup.add(chainsaw);
+
+        const pistol = new THREE.Group();
+        const pFrame = new THREE.Mesh(
+            new THREE.BoxGeometry(0.08, 0.15, 0.25),
+            new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.7 })
+        );
+        pistol.add(pFrame);
+        const pBarrel = new THREE.Mesh(
+            new THREE.BoxGeometry(0.06, 0.08, 0.35),
+            new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.9 })
+        );
+        pBarrel.position.set(0, 0.04, -0.15);
+        pistol.add(pBarrel);
+        const pGrip = new THREE.Mesh(
+            new THREE.BoxGeometry(0.07, 0.22, 0.1),
+            new THREE.MeshStandardMaterial({ color: 0x5c3a21 })
+        );
+        pGrip.position.set(0, -0.12, 0.05);
+        pGrip.rotation.x = 0.3;
+        pistol.add(pGrip);
+        pistol.visible = false;
+        toolGroup.add(pistol);
+
+        const ak47 = new THREE.Group();
+        const akBody = new THREE.Mesh(
+            new THREE.BoxGeometry(0.1, 0.18, 0.7),
+            new THREE.MeshStandardMaterial({ color: 0x2c3e50, metalness: 0.8 })
+        );
+        ak47.add(akBody);
+        const akBarrel = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.03, 0.03, 0.6, 8),
+            new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.9 })
+        );
+        akBarrel.rotation.x = Math.PI / 2;
+        akBarrel.position.set(0, 0.03, -0.55);
+        ak47.add(akBarrel);
+        const akMag = new THREE.Mesh(
+            new THREE.BoxGeometry(0.08, 0.35, 0.12),
+            new THREE.MeshStandardMaterial({ color: 0x1a252f })
+        );
+        akMag.position.set(0, -0.22, -0.1);
+        akMag.rotation.x = -0.3;
+        ak47.add(akMag);
+        const akStock = new THREE.Mesh(
+            new THREE.BoxGeometry(0.08, 0.15, 0.45),
+            new THREE.MeshStandardMaterial({ color: 0x8B4513 })
+        );
+        akStock.position.set(0, -0.05, 0.5);
+        ak47.add(akStock);
+        ak47.visible = false;
+        toolGroup.add(ak47);
+
+        const handCube = new THREE.Mesh(
+            new THREE.BoxGeometry(0.25, 0.25, 0.25),
+            new THREE.MeshStandardMaterial({ color: 0x3498db, emissive: 0x1d6fa5, roughness: 0.2 })
+        );
+        handCube.visible = false;
+        toolGroup.add(handCube);
+
+        const handWall = new THREE.Mesh(
+            new THREE.BoxGeometry(0.3, 0.4, 0.1),
+            new THREE.MeshStandardMaterial({ map: textures.planks, roughness: 0.8 })
+        );
+        handWall.visible = false;
+        toolGroup.add(handWall);
+
+        toolGroup.position.set(0.4, -0.3, -0.6);
+        toolGroup.rotation.set(0.2, -0.5, -0.2);
+        camera.add(toolGroup);
+        scene.add(camera);
+
+        camera.position.set(-8, getTerrainHeight(-8, 2) + 1.6, 2);
+
+        const trees = [];
+        for(let i = 0; i < 22; i++) {
+            const tree = new THREE.Group();
+            let isWild = i < 5;
+            let leafColor = isWild ? 0x8b0000 : 0x1e8449;
+
+            const trunk = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.3, 0.35, 2), 
+                new THREE.MeshStandardMaterial({ map: isWild ? textures.wildBark : textures.bark, roughness: 0.9 })
+            );
+            trunk.position.y = 1;
+            trunk.castShadow = true;
+            
+            const leaves = new THREE.Mesh(
+                new THREE.ConeGeometry(1.4, 2.5, 6), 
+                new THREE.MeshStandardMaterial({ color: leafColor, roughness: 0.8 })
+            );
+            leaves.position.y = 2.6;
+            leaves.castShadow = true;
+            tree.add(trunk, leaves);
+
+            if (isWild) {
+                const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+                const eyeGeo = new THREE.SphereGeometry(0.1, 8, 8);
+                const eye1 = new THREE.Mesh(eyeGeo, eyeMat);
+                eye1.position.set(0.2, 1.8, 0.25);
+                const eye2 = new THREE.Mesh(eyeGeo, eyeMat);
+                eye2.position.set(-0.2, 1.8, 0.25);
+                tree.add(eye1, eye2);
+            }
+
+            tree.userData = { 
+                wood: isWild ? 0 : 2, 
+                chopTime: isWild ? 6.0 : 1.2, 
+                currentChop: 0, 
+                isWild: isWild, 
+                maxChop: isWild ? 6.0 : 1.2,
+                jumpTimer: Math.random() * 3
+            };
+
+            let randomX, randomZ;
+            do {
+                randomX = (Math.random() - 0.5) * 100;
+                randomZ = (Math.random() - 0.5) * 100;
+            } while (randomX > 16 && randomX < 34);
+
+            tree.position.set(randomX, getTerrainHeight(randomX, randomZ), randomZ);
+            scene.add(tree);
+            trees.push(tree);
+
+            colliders.push({ type: 'cylinder', x: randomX, z: randomZ, r: 0.5 });
+        }
+
+        function respawnTree(tree) {
+            let rx, rz;
+            do {
+                rx = (Math.random() - 0.5) * 100;
+                rz = (Math.random() - 0.5) * 100;
+            } while (rx > 16 && rx < 34);
+            
+            let col = colliders.find(c => c.type === 'cylinder' && c.x === tree.position.x && c.z === tree.position.z);
+            if (col) {
+                col.x = rx;
+                col.z = rz;
+            }
+
+            tree.position.set(rx, getTerrainHeight(rx, rz), rz);
+            tree.userData.currentChop = 0;
+            tree.userData.jumpTimer = 0;
+            tree.rotation.z = 0;
+            tree.rotation.x = 0;
+        }
+
+        const projectiles = [];
+        function shootGun() {
+            let activeDurKey = activeSlot === 1 ? axeLevel : (activeSlot === 2 ? weaponLevel : 6);
+            if (toolDurability[activeDurKey] <= 0) {
+                showNotification('Оружие сломано! Почините его у фиксиков.');
+                return;
+            }
+
+            toolDurability[activeDurKey] -= (weaponLevel === 5 ? 1.0 : 1.5);
+            if (toolDurability[activeDurKey] < 0) toolDurability[activeDurKey] = 0;
+            updateDurabilityUI();
+
+            const isAK = weaponLevel === 5;
+            const projGeo = isAK ? new THREE.BoxGeometry(0.1, 0.1, 0.3) : new THREE.SphereGeometry(0.08, 8, 8);
+            const projMat = new THREE.MeshStandardMaterial({ color: isAK ? 0xf1c40f : 0xcccccc, metalness: 0.9 });
+            const proj = new THREE.Mesh(projGeo, projMat);
+
+            proj.position.copy(camera.position);
+            const dir = new THREE.Vector3();
+            camera.getWorldDirection(dir);
+            proj.velocity = dir.clone().multiplyScalar(isAK ? 60.0 : 45.0);
+            proj.life = 2.0;
+
+            scene.add(proj);
+            projectiles.push(proj);
+        }
+
+        let activeThrownCube = null;
+
+        function useExplosiveCubeItem() {
+            if (activeThrownCube) return;
+            if (toolDurability[6] <= 0) {
+                showNotification('Взрывной куб сломан! Почините его у фиксиков.');
+                return;
+            }
+
+            toolDurability[6] -= 10;
+            if (toolDurability[6] < 0) toolDurability[6] = 0;
+            updateDurabilityUI();
+
+            const cubeGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+            const cubeMat = new THREE.MeshStandardMaterial({ color: 0x3498db, emissive: 0x1d6fa5, roughness: 0.2 });
+            const flyingCube = new THREE.Mesh(cubeGeo, cubeMat);
+            
+            flyingCube.position.copy(camera.position);
+            scene.add(flyingCube);
+
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+            const intersects = raycaster.intersectObject(ground);
+            
+            let targetPos = new THREE.Vector3();
+            if (intersects.length > 0) {
+                targetPos.copy(intersects[0].point);
+            } else {
+                const dir = new THREE.Vector3();
+                camera.getWorldDirection(dir);
+                targetPos.copy(camera.position).addScaledVector(dir, 15);
+            }
+            targetPos.y = getTerrainHeight(targetPos.x, targetPos.z) + 0.25;
+
+            activeThrownCube = {
+                mesh: flyingCube,
+                target: targetPos,
+                state: 'flying',
+                speed: 30.0
+            };
+
+            handCube.visible = false;
+            showNotification('Куб запущен в цель!');
+        }
+
+        function placeWall() {
+            if (toolDurability[7] <= 0) {
+                showNotification('Слот стены сломан! Почините его у фиксиков.');
+                return;
+            }
+
+            toolDurability[7] -= 20; 
+            if (toolDurability[7] < 0) toolDurability[7] = 0;
+            updateDurabilityUI();
+
+            const dir = new THREE.Vector3();
+            camera.getWorldDirection(dir);
+            const spawnPos = camera.position.clone().addScaledVector(dir, 3.0);
+            spawnPos.y = getTerrainHeight(spawnPos.x, spawnPos.z) + 1.0;
+
+            const wallGeo = new THREE.BoxGeometry(2.0, 2.0, 0.4);
+            const wallMat = new THREE.MeshStandardMaterial({ map: textures.planks, roughness: 0.8 });
+            const wallMesh = new THREE.Mesh(wallGeo, wallMat);
+            wallMesh.position.copy(spawnPos);
+            wallMesh.castShadow = true;
+            wallMesh.receiveShadow = true;
+            scene.add(wallMesh);
+
+            placedWalls.push({
+                mesh: wallMesh,
+                hp: 5,
+                x: spawnPos.x,
+                z: spawnPos.z,
+                rx: 1.0,
+                rz: 0.2
+            });
+
+            colliders.defineBox(spawnPos.x, spawnPos.z, 2.0, 0.4);
+            showNotification('🛡️ Защитная стена установлена!');
+        }
+
+        const controls = new THREE.PointerLockControls(camera, renderer.domElement);
+        
+        let stats = { health: 100, wood: 0, money: 30 };
+        let axeLevel = 1;
+        let weaponLevel = 4;
+        let activeSlot = 1;
+
+        let toolDurability = { 1: 100, 2: 100, 3: 100, 4: 100, 5: 100, 6: 100, 7: 100 };
+        let unlockedAxes = { 1: true, 2: false, 3: false };
+        let unlockedWeapons = { 4: true, 5: false };
+        let unlockedCube = false;
+
+        let isRiding = false;
+        let isMouseDown = false;
+        let isShopOpen = false;
+        let isCasinoOpen = false;
+        let isFixicsOpen = false;
+        let isDevOpen = false;
+        let isDead = false;
+        let canOpenShop = true;
+        let canOpenCasino = true;
+        let canOpenFixics = false;
+        let fixicsActive = false;
+        let fixicsTimer = 0;
+        let tarotCountdown = 30.0;
+        let canSellWood = true;
+        let targetedTree = null;
+        let gameTime = 0;
+        const keys = {};
+
+        function updateDurabilityUI() {
+            let icon1 = document.getElementById('iconSlot1');
+            let name1 = document.getElementById('nameSlot1');
+            if (axeLevel === 1) { icon1.innerText = '🪓'; name1.innerText = 'Топор'; }
+            else if (axeLevel === 2) { icon1.innerText = '🪓'; name1.innerText = 'Зол. топор'; }
+            else if (axeLevel === 3) { icon1.innerText = '⚙️'; name1.innerText = 'Бензопила'; }
+
+            let icon2 = document.getElementById('iconSlot2');
+            let name2 = document.getElementById('nameSlot2');
+            if (weaponLevel === 4) { icon2.innerText = '🔫'; name2.innerText = 'Пистолет'; }
+            else if (weaponLevel === 5) { icon2.innerText = '🔥'; name2.innerText = 'АК-47'; }
+
+            let maxSlots = unlockedCube ? 3 : 2;
+            for (let i = 1; i <= maxSlots; i++) {
+                let fill = document.getElementById('durFill' + i);
+                let durKey = (i === 1) ? axeLevel : (i === 2 ? weaponLevel : 6);
+                let val = toolDurability[durKey];
+                if (fill) {
+                    fill.style.width = val + '%';
+                    fill.style.background = val > 30 ? '#2ecc71' : (val > 0 ? '#f39c12' : '#e74c3c');
+                }
+            }
+
+            let fill4 = document.getElementById('durFill4');
+            if (fill4) {
+                let val4 = toolDurability[7];
+                fill4.style.width = val4 + '%';
+                fill4.style.background = val4 > 30 ? '#2ecc71' : (val4 > 0 ? '#f39c12' : '#e74c3c');
+            }
+        }
+
+        function selectSlot(slotNum) {
+            activeSlot = slotNum;
+            document.querySelectorAll('.slot').forEach(s => s.classList.remove('active'));
+            document.getElementById('slot' + slotNum).classList.add('active');
+            
+            if (slotNum === 1) switchTool(axeLevel);
+            else if (slotNum === 2) switchTool(weaponLevel);
+            else if (slotNum === 3) switchTool(6);
+            else if (slotNum === 4) switchTool(7);
+        }
+
+        window.addEventListener('mousedown', (e) => {
+            if (e.button === 0 && controls.isLocked && !isShopOpen && !isCasinoOpen && !isFixicsOpen && !isDevOpen && !isDead) {
+                if (activeSlot === 4) {
+                    placeWall();
+                    return;
+                }
+
+                let activeDurKey = (activeSlot === 1) ? axeLevel : (activeSlot === 2 ? weaponLevel : 6);
+                if (activeSlot !== 4 && toolDurability[activeDurKey] <= 0) {
+                    showNotification('Этот инструмент сломан!');
+                    return;
+                }
+
+                if (activeSlot === 2) {
+                    shootGun();
+                } else if (activeSlot === 3) {
+                    useExplosiveCubeItem();
+                } else {
+                    isMouseDown = true;
+                    let closestTree = null;
+                    let minDist = 3.5;
+                    trees.forEach(t => {
+                        let dist = camera.position.distanceTo(t.position);
+                        if (dist < minDist && !t.userData.isWild) {
+                            minDist = dist;
+                            closestTree = t;
+                        }
+                    });
+                    targetedTree = closestTree;
+                }
+            }
+        });
+        window.addEventListener('mouseup', (e) => {
+            if (e.button === 0) {
+                isMouseDown = false;
+                if (targetedTree) {
+                    targetedTree.rotation.z = 0;
+                    targetedTree.rotation.x = 0;
+                }
+                targetedTree = null;
+                document.getElementById('chopProgress').style.display = 'none';
+                document.getElementById('progressBar').style.width = '0%';
+            }
+        });
+
+        document.body.addEventListener('click', () => {
+            if (!isShopOpen && !isCasinoOpen && !isFixicsOpen && !isDevOpen && !isDead && !controls.isLocked) {
+                controls.lock();
+            }
+        });
+
+        window.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+            
+            if (e.code === 'F3') {
+                e.preventDefault();
+                toggleDevMenu();
+                return;
+            }
+
+            if (e.code === 'KeyE') {
+                if (isShopOpen || isCasinoOpen || isFixicsOpen || isDevOpen || isDead) return;
+                
+                if (camera.position.distanceTo(altarPos) < 4.5) {
+                    tryActivateBoss();
+                    return;
+                }
+
+                if (mosqueExists) {
+                    let distToMosque = camera.position.distanceTo(mosquePos);
+                    if (distToMosque < 4.5) {
+                        triggerMosquePrayer();
+                        return;
+                    }
+                }
+
+                if (camera.position.distanceTo(buyerCarPos) < 4.5) {
+                    sellWoodToTruck();
+                    return;
+                }
+
+                let cycleProgress = (gameTime % 60) / 60; 
+                if (cycleProgress > 0.5) {
+                    showNotification('Ночью кабаны прячутся в пещере!');
+                    isRiding = false;
+                    document.getElementById('mode').innerText = 'Пешком';
+                    return;
+                }
+
+                let closestBoar = boars.find(b => camera.position.distanceTo(b.position) < 4);
+                if (isRiding || closestBoar) {
+                    isRiding = !isRiding;
+                    document.getElementById('mode').innerText = isRiding ? 'Верхом на кабане' : 'Пешком';
+                }
+            }
+
+            if (!isShopOpen && !isCasinoOpen && !isFixicsOpen && !isDevOpen && !isDead) {
+                if (e.code === 'Digit1') selectSlot(1);
+                if (e.code === 'Digit2') selectSlot(2);
+                if (e.code === 'Digit3' && unlockedCube) selectSlot(3);
+                if (e.code === 'Digit4') selectSlot(4);
+            }
+        });
+        window.addEventListener('keyup', (e) => keys[e.code] = false);
+
+        let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'KeyW' || e.code === 'ArrowUp') moveForward = true;
+            if (e.code === 'KeyS' || e.code === 'ArrowDown') moveBackward = true;
+            if (e.code === 'KeyA' || e.code === 'ArrowLeft') moveLeft = true;
+            if (e.code === 'KeyD' || e.code === 'ArrowRight') moveRight = true;
+        });
+        window.addEventListener('keyup', (e) => {
+            if (e.code === 'KeyW' || e.code === 'ArrowUp') moveForward = false;
+            if (e.code === 'KeyS' || e.code === 'ArrowDown') moveBackward = false;
+            if (e.code === 'KeyA' || e.code === 'ArrowLeft') moveLeft = false;
+            if (e.code === 'KeyD' || e.code === 'ArrowRight') moveRight = false;
+        });
+
+        function tryActivateBoss() {
+            if (bossActive) {
+                showNotification('Босс уже призван!');
+                return;
+            }
+            if (boars.length >= 4) {
+                for(let i = 0; i < 4; i++) {
+                    let b = boars.pop();
+                    scene.remove(b);
+                }
+                boarData.splice(0, 4);
+                totalBoarsCount = boars.length;
+                document.getElementById('boarsCount').innerText = '🐗 ' + totalBoarsCount;
+
+                spawnBoss();
+                showNotification('⚡ Жертва принята! ДРЕВНИЙ БОСС ПРОБУДИЛСЯ!');
+            } else {
+                showNotification('❌ На карте должно быть не менее 4 кабанов для активации алтаря!');
+            }
+        }
+
+        function spawnBoss() {
+            bossActive = true;
+            document.getElementById('bossUI').style.display = 'block';
+
+            bossInstance = new THREE.Group();
+            const bTrunk = new THREE.Mesh(
+                new THREE.CylinderGeometry(1.2, 1.5, 6, 12),
+                new THREE.MeshStandardMaterial({ map: textures.wildBark, roughness: 0.9 })
+            );
+            bTrunk.position.y = 3;
+            bTrunk.castShadow = true;
+            bossInstance.add(bTrunk);
+
+            const bCrown = new THREE.Mesh(
+                new THREE.ConeGeometry(4, 7, 8),
+                new THREE.MeshStandardMaterial({ color: 0x4a0000, roughness: 0.7 })
+            );
+            bCrown.position.y = 8;
+            bCrown.castShadow = true;
+            bossInstance.add(bCrown);
+
+            const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+            const eyeGeo = new THREE.SphereGeometry(0.3, 8, 8);
+            const e1 = new THREE.Mesh(eyeGeo, eyeMat); e1.position.set(0.6, 5, 1.1);
+            const e2 = new THREE.Mesh(eyeGeo, eyeMat); e2.position.set(-0.6, 5, 1.1);
+            bossInstance.add(e1, e2);
+
+            bossInstance.position.set(altarPos.x, getTerrainHeight(altarPos.x, altarPos.z + 10), altarPos.z + 10);
+            scene.add(bossInstance);
+
+            bossData.hp = 500;
+            bossData.maxHp = 500;
+            bossData.attackTimer = 3.0;
+            bossData.phase = 'combat';
+            document.getElementById('bossHPBar').style.width = '100%';
+        }
+
+        const activeWarnings = [];
+        function createWarningIndicator(type, position, size = 5) {
+            let marker;
+            if (type === 'circle') {
+                const geo = new THREE.RingGeometry(size - 0.3, size, 32);
+                geo.rotateX(-Math.PI / 2);
+                const mat = new THREE.MeshBasicMaterial({ color: 0xff0000, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
+                marker = new THREE.Mesh(geo, mat);
+            } else {
+                const geo = new THREE.PlaneGeometry(2, size);
+                geo.rotateX(-Math.PI / 2);
+                const mat = new THREE.MeshBasicMaterial({ color: 0xff0000, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
+                marker = new THREE.Mesh(geo, mat);
+            }
+            marker.position.set(position.x, getTerrainHeight(position.x, position.z) + 0.05, position.z);
+            scene.add(marker);
+
+            activeWarnings.push({ mesh: marker, life: 1.5 });
+        }
+
+        function damageWallsByHit(damageAmount = 1) {
+            for (let i = placedWalls.length - 1; i >= 0; i--) {
+                let wall = placedWalls[i];
+                wall.hp -= damageAmount;
+                if (wall.hp <= 0) {
+                    scene.remove(wall.mesh);
+                    const cIdx = colliders.findIndex(c => c.type === 'box' && c.x === wall.x && c.z === wall.z);
+                    if (cIdx !== -1) colliders.splice(cIdx, 1);
+                    placedWalls.splice(i, 1);
+                    showNotification('💥 Защитная стена уничтожена!');
+                } else {
+                    showNotification(`🧱 Стена повреждена! Осталось прочности: ${wall.hp}/5`);
+                }
+            }
+        }
+
+        function executeBossAttack() {
+            if (!bossActive || !bossInstance) return;
+            const attackChoice = Math.floor(Math.random() * 3) + 1;
+
+            if (attackChoice === 1) {
+                showNotification('⚠️ БОСС: Воздушная бомбардировка деревьями!');
+                for (let i = 0; i < 4; i++) {
+                    let tx = camera.position.x + (Math.random() - 0.5) * 20;
+                    let tz = camera.position.z + (Math.random() - 0.5) * 20;
+                    createWarningIndicator('circle', new THREE.Vector3(tx, 0, tz), 4);
+                    
+                    setTimeout(() => {
+                        let hitPos = new THREE.Vector3(tx, getTerrainHeight(tx, tz), tz);
+                        createExplosion(hitPos);
+                        
+                        placedWalls.forEach(w => {
+                            if (Math.hypot(w.x - tx, w.z - tz) < 3.0) {
+                                damageWallsByHit(5);
+                            }
+                        });
+
+                        if (camera.position.distanceTo(hitPos) < 4.5) {
+                            damagePlayer(30);
+                        }
+                    }, 1500);
+                }
+            } else if (attackChoice === 2) {
+                showNotification('⚠️ БОСС: Деревья-поезда мчатся на вас!');
+                let startPos = bossInstance.position.clone();
+                let endPos = camera.position.clone();
+                
+                createWarningIndicator('line', startPos.clone().lerp(endPos, 0.5), startPos.distanceTo(endPos));
+
+                setTimeout(() => {
+                    const trainGroup = new THREE.Group();
+                    for(let k = 0; k < 3; k++) {
+                        let t = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.6, 4, 8), new THREE.MeshStandardMaterial({map: textures.wildBark}));
+                        t.position.set(0, 2, k * 3);
+                        trainGroup.add(t);
+                    }
+                    trainGroup.position.copy(startPos);
+                    scene.add(trainGroup);
+
+                    let progress = 0;
+                    let trainInterval = setInterval(() => {
+                        progress += 0.05;
+                        trainGroup.position.lerp(endPos, progress);
+                        
+                        placedWalls.forEach(w => {
+                            if (trainGroup.position.distanceTo(new THREE.Vector3(w.x, 0, w.z)) < 3.0) {
+                                damageWallsByHit(5);
+                            }
+                        });
+
+                        if (trainGroup.position.distanceTo(camera.position) < 3.5) {
+                            damagePlayer(40);
+                        }
+                        if (progress >= 1.0) {
+                            clearInterval(trainInterval);
+                            scene.remove(trainGroup);
+                        }
+                    }, 30);
+                }, 1500);
+
+            } else if (attackChoice === 3) {
+                showNotification('⚠️ БОСС: Шипы-деревянные пики из-под земли!');
+                let spikePos = camera.position.clone();
+                createWarningIndicator('circle', spikePos, 3);
+
+                setTimeout(() => {
+                    const spikeGroup = new THREE.Group();
+                    for(let s = 0; s < 5; s++) {
+                        let spike = new THREE.Mesh(new THREE.ConeGeometry(0.6, 5, 6), new THREE.MeshStandardMaterial({map: textures.wildBark}));
+                        spike.position.set((Math.random()-0.5)*4, -2.5, (Math.random()-0.5)*4);
+                        spikeGroup.add(spike);
+                    }
+                    spikeGroup.position.set(spikePos.x, getTerrainHeight(spikePos.x, spikePos.z), spikePos.z);
+                    scene.add(spikeGroup);
+
+                    let upTime = 0;
+                    let spikeAnim = setInterval(() => {
+                        upTime += 0.05;
+                        if (upTime < 0.5) {
+                            spikeGroup.position.y += 0.3;
+                        } else if (upTime > 1.2 && upTime < 1.7) {
+                            spikeGroup.position.y -= 0.3;
+                        }
+
+                        placedWalls.forEach(w => {
+                            if (spikeGroup.position.distanceTo(new THREE.Vector3(w.x, 0, w.z)) < 3.0) {
+                                damageWallsByHit(5);
+                            }
+                        });
+
+                        if (spikeGroup.position.distanceTo(camera.position) < 3.0) {
+                            damagePlayer(35);
+                        }
+
+                        if (upTime >= 2.0) {
+                            clearInterval(spikeAnim);
+                            scene.remove(spikeGroup);
+                        }
+                    }, 30);
+                }, 1500);
+            }
+        }
+
+        function damagePlayer(amount) {
+            stats.health -= amount;
+            if (stats.health <= 0) {
+                stats.health = 0;
+                document.getElementById('health').innerText = 0;
+                die();
+            } else {
+                document.getElementById('health').innerText = Math.round(stats.health);
+                showNotification(`Вы получили урон! (-${amount} HP)`);
+            }
+        }
+
+        function devSpawnBossDirect() {
+            if (!bossActive) spawnBoss();
+        }
+
+        function triggerMosquePrayer() {
+            if (!mosqueExists) return;
+            const roll = Math.random();
+            if (roll < 0.90) {
+                createExplosion(mosquePos);
+                scene.remove(mosqueGroup);
+                mosqueExists = false;
+                const colIndex = colliders.findIndex(c => c.type === 'box' && c.x === mosquePos.x && c.z === mosquePos.z);
+                if (colIndex !== -1) colliders.splice(colIndex, 1);
+
+                stats.health -= 90;
+                if (stats.health <= 0) {
+                    stats.health = 0;
+                    document.getElementById('health').innerText = 0;
+                    die();
+                    showNotification('🤲 Храм взорвался! Вы погибли...');
+                } else {
+                    document.getElementById('health').innerText = stats.health;
+                    showNotification('🤲 Храм взорвался! (-90 HP)');
+                }
+            } else {
+                stats.money += 30;
+                document.getElementById('money').innerText = stats.money;
+                showNotification('🤲 Благословение! +30 монет! 🪙');
+            }
+        }
+
+        function die() {
+            isDead = true;
+            controls.unlock();
+            isMouseDown = false;
+            document.getElementById('chopProgress').style.display = 'none';
+            document.getElementById('deathMenu').style.display = 'block';
+        }
+
+        function respawnPlayer() {
+            isDead = false;
+            stats.health = 100;
+            document.getElementById('health').innerText = stats.health;
+            camera.position.set(-8, getTerrainHeight(-8, 2) + 1.6, 2);
+            isRiding = false;
+            document.getElementById('mode').innerText = 'Пешком';
+            document.getElementById('deathMenu').style.display = 'none';
+            controls.lock();
+        }
+
+        function toggleDevMenu() {
+            if (isDead) return;
+            isDevOpen = !isDevOpen;
+            if (isDevOpen) {
+                isShopOpen = false;
+                isCasinoOpen = false;
+                isFixicsOpen = false;
+                document.getElementById('shopMenu').style.display = 'none';
+                document.getElementById('casinoMenu').style.display = 'none';
+                document.getElementById('fixicsMenu').style.display = 'none';
+                isMouseDown = false;
+                controls.unlock();
+                document.getElementById('devMenu').style.display = 'block';
+            } else {
+                document.getElementById('devMenu').style.display = 'none';
+                controls.lock();
+            }
+        }
+
+        function closeDevMenu() {
+            isDevOpen = false;
+            document.getElementById('devMenu').style.display = 'none';
+            controls.lock();
+        }
+
+        function devAddMoney(amount) {
+            stats.money += amount;
+            document.getElementById('money').innerText = stats.money;
+        }
+
+        function devAddWood(amount) {
+            stats.wood += amount;
+            document.getElementById('wood').innerText = stats.wood;
+        }
+
+        function devSpawnFixics() {
+            fixicsActive = true;
+            fixicsGroup.visible = true;
+            fixicsTimer = 30;
+            document.getElementById('fixicsStatus').innerText = 'На месте! У дома 🛠️';
+            document.getElementById('fixicsStatus').style.color = '#f1c40f';
+            showNotification('Фиксики прибыли!');
+        }
+
+        function devTriggerTarot() {
+            triggerTarotCard();
+            tarotCountdown = 30.0;
+        }
+
+        function devUnlockAll() {
+            axeLevel = 3;
+            unlockedAxes[2] = true;
+            unlockedAxes[3] = true;
+            weaponLevel = 5;
+            unlockedWeapons[5] = true;
+            unlockedCube = true;
+            document.getElementById('slot3').classList.remove('hidden');
+            document.getElementById('fixBtn3').classList.remove('hidden');
+            stats.money += 1000;
+            document.getElementById('money').innerText = stats.money;
+            updateDurabilityUI();
+            selectSlot(1);
+        }
+
+        function openShop() {
+            if (!isShopOpen && !isCasinoOpen && !isFixicsOpen && !isDevOpen && !isDead && canOpenShop) {
+                isShopOpen = true;
+                isMouseDown = false;
+                controls.unlock();
+                document.getElementById('shopMenu').style.display = 'block';
+                
+                const btnGold = document.getElementById('buyGoldAxeBtn');
+                const btnSaw = document.getElementById('buyChainsawBtn');
+                const btnPistol = document.getElementById('buyPistolBtn');
+                const btnAK = document.getElementById('buyAxeCannonBtn');
+                const btnCube = document.getElementById('buyExplosiveCubeBtn');
+
+                btnGold.disabled = unlockedAxes[2];
+                btnGold.innerText = unlockedAxes[2] ? 'Золотой топор (Уже есть)' : 'Купить Золотой топор (50 монет)';
+                if (!btnGold.disabled && stats.money < 50) btnGold.disabled = true;
+
+                btnSaw.disabled = unlockedAxes[3];
+                btnSaw.innerText = unlockedAxes[3] ? 'Бензопила (Уже есть)' : 'Купить Бензопилу (150 монет)';
+                if (!btnSaw.disabled && stats.money < 150) btnSaw.disabled = true;
+
+                btnPistol.disabled = unlockedWeapons[4];
+                btnPistol.innerText = unlockedWeapons[4] ? 'Пистолет (Уже есть)' : 'Купить Пистолет (200 монет)';
+                if (!btnPistol.disabled && stats.money < 200) btnPistol.disabled = true;
+
+                btnAK.disabled = unlockedWeapons[5];
+                btnAK.innerText = unlockedWeapons[5] ? 'АК-47 (Уже есть)' : 'Купить АК-47 (300 монет)';
+                if (!btnAK.disabled && stats.money < 300) btnAK.disabled = true;
+
+                btnCube.disabled = unlockedCube;
+                btnCube.innerText = unlockedCube ? 'Взрывной куб (Уже есть)' : 'Купить Взрывной куб (500 монет)';
+                if (!btnCube.disabled && stats.money < 500) btnCube.disabled = true;
+            }
+        }
+
+        function closeShop() {
+            isShopOpen = false;
+            canOpenShop = false;
+            document.getElementById('shopMenu').style.display = 'none';
+            controls.lock();
+        }
+
+        function openCasino() {
+            if (!isCasinoOpen && !isShopOpen && !isFixicsOpen && !isDevOpen && !isDead && canOpenCasino) {
+                isCasinoOpen = true;
+                isMouseDown = false;
+                controls.unlock();
+                document.getElementById('casinoMenu').style.display = 'block';
+                document.getElementById('casinoMessage').innerText = 'Крути барабан и сорви куш!';
+                document.getElementById('slotsResult').innerText = '🍒 🍋 🍊';
+            }
+        }
+
+        function closeCasinoMenu() {
+            isCasinoOpen = false;
+            canOpenCasino = false;
+            document.getElementById('casinoMenu').style.display = 'none';
+            controls.lock();
+        }
+
+        function triggerTarotCard() {
+            const outcome = Math.random();
+            if (outcome < 0.33) {
+                showNotification('🔮 Таролог Каляка вытянул: Пустая карта');
+            } else if (outcome < 0.66) {
+                showNotification('🔮 Таролог Каляка вытянул: СОВА НА СКАКЛКЕ!');
+                startWildTreeBombardment();
+            } else {
+                doubleWoodActive = true;
+                showNotification('🔮 Таролог Каляка вытянул: ДВОЙНОЙ ДОХОД ОТ ДРОВ! (на 30с)');
+                setTimeout(() => { doubleWoodActive = false; showNotification('🔮 Эффект двойных дров закончился.'); }, 30000);
+            }
+        }
+
+        function startWildTreeBombardment() {
+            let bombsSpawned = 0;
+            const bombInterval = setInterval(() => {
+                if (bombsSpawned >= 6) {
+                    clearInterval(bombInterval);
+                    return;
+                }
+                bombsSpawned++;
+
+                const offsetX = (Math.random() - 0.5) * 30;
+                const offsetZ = (Math.random() - 0.5) * 30;
+                const targetX = camera.position.x + offsetX;
+                const targetZ = camera.position.z + offsetZ;
+
+                createWarningIndicator('circle', new THREE.Vector3(targetX, 0, targetZ), 3.5);
+
+                const group = new THREE.Group();
+                const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.6, 3, 8), new THREE.MeshStandardMaterial({ map: textures.wildBark }));
+                trunk.position.y = 1.5;
+                group.add(trunk);
+                const leaves = new THREE.Mesh(new THREE.ConeGeometry(2, 4, 8), new THREE.MeshStandardMaterial({ color: 0x8b0000 }));
+                leaves.position.y = 4;
+                group.add(leaves);
+
+                group.position.set(targetX, 30, targetZ);
+                scene.add(group);
+
+                const dropInterval = setInterval(() => {
+                    group.position.y -= 1;
+                    if (group.position.y <= 0) {
+                        group.position.y = 0;
+                        clearInterval(dropInterval);
+
+                        let pos = group.position.clone();
+                        createExplosion(pos);
+
+                        placedWalls.forEach(w => {
+                            if (Math.hypot(w.x - pos.x, w.z - pos.z) < 3.0) {
+                                damageWallsByHit(1);
+                            }
+                        });
+
+                        if (camera.position.distanceTo(pos) < 4.5) {
+                            damagePlayer(25);
+                        }
+                        scene.remove(group);
+                    }
+                }, 30);
+            }, 1000);
+        }
+
+        function createExplosion(pos) {
+            const expGeo = new THREE.SphereGeometry(2.5, 16, 16);
+            const expMat = new THREE.MeshBasicMaterial({ color: 0x3498db, wireframe: true });
+            const expMesh = new THREE.Mesh(expGeo, expMat);
+            expMesh.position.copy(pos);
+            scene.add(expMesh);
+
+            trees.forEach(t => {
+                if (t.userData.isWild && t.position.distanceTo(pos) < 5.0) {
+                    let woodGained = t.userData.wood * (doubleWoodActive ? 2 : 1);
+                    stats.wood += woodGained;
+                    document.getElementById('wood').innerText = stats.wood;
+                    respawnTree(t);
+                    showNotification('Взрыв уничтожил дикое дерево! +дрова');
+                }
+            });
+
+            if (bossActive && bossInstance && bossInstance.position.distanceTo(pos) < 5.0) {
+                bossData.hp -= 40;
+                if (bossData.hp < 0) bossData.hp = 0;
+                document.getElementById('bossHPBar').style.width = (bossData.hp / bossData.maxHp * 100) + '%';
+                if (bossData.hp <= 0) defeatBoss();
+            }
+
+            if (camera.position.distanceTo(pos) < 4.0) {
+                damagePlayer(20);
+            }
+
+            let scale = 1;
+            const expAnim = setInterval(() => {
+                scale += 0.25;
+                expMesh.scale.set(scale, scale, scale);
+                if (scale > 3.5) {
+                    scene.remove(expMesh);
+                    clearInterval(expAnim);
+                }
+            }, 30);
+        }
+
+        function defeatBoss() {
+            bossActive = false;
+            scene.remove(bossInstance);
+            bossInstance = null;
+            document.getElementById('bossUI').style.display = 'none';
+
+            stats.money += 200;
+            document.getElementById('money').innerText = stats.money;
+            showNotification('🎉 ПОБЕДА НАД БОССОМ! Получено 200 монет и бейдж победителя босса!');
+        }
+
+        const symbols = ['🍒', '🍋', '🍊', '⭐', '💎', '7️⃣'];
+        function playCasino(cost) {
+            if (stats.money < cost) {
+                document.getElementById('casinoMessage').innerText = 'Недостаточно монет!';
+                return;
+            }
+
+            stats.money -= cost;
+            document.getElementById('money').innerText = stats.money;
+
+            let s1 = symbols[Math.floor(Math.random() * symbols.length)];
+            let s2 = symbols[Math.floor(Math.random() * symbols.length)];
+            let s3 = symbols[Math.floor(Math.random() * symbols.length)];
+
+            document.getElementById('slotsResult').innerText = `${s1} ${s2} ${s3}`;
+
+            if (s1 === s2 && s2 === s3) {
+                let win = cost * 10;
+                stats.money += win;
+                document.getElementById('money').innerText = stats.money;
+                document.getElementById('casinoMessage').innerText = `ДЖЕКПОТ! Выиграно ${win} монет! 🎉`;
+            } else if (s1 === s2 || s2 === s3 || s1 === s3) {
+                let win = cost * 2;
+                stats.money += win;
+                document.getElementById('money').innerText = stats.money;
+                document.getElementById('casinoMessage').innerText = `Пара! Выиграно ${win} монет.`;
+            } else {
+                document.getElementById('casinoMessage').innerText = 'Мимо! Попробуйте еще!';
+            }
+        }
+
+        function playCasinoAll() {
+            if (stats.money <= 0) {
+                document.getElementById('casinoMessage').innerText = 'У вас нет монет для ставки!';
+                return;
+            }
+            let bet = stats.money;
+            stats.money = 0;
+            document.getElementById('money').innerText = stats.money;
+
+            let s1 = symbols[Math.floor(Math.random() * symbols.length)];
+            let s2 = symbols[Math.floor(Math.random() * symbols.length)];
+            let s3 = symbols[Math.floor(Math.random() * symbols.length)];
+
+            document.getElementById('slotsResult').innerText = `${s1} ${s2} ${s3}`;
+
+            if (s1 === s2 && s2 === s3) {
+                let win = bet * 25;
+                stats.money += win;
+                document.getElementById('money').innerText = stats.money;
+                document.getElementById('casinoMessage').innerText = `МЕГА ВА-БАНК ДЖЕКПОТ! +${win} монет! 🔥`;
+            } else {
+                document.getElementById('casinoMessage').innerText = 'Ва-банк проигран! Вы потеряли всё...';
+            }
+        }
+
+        function openFixicsMenu() {
+            if (!isFixicsOpen && !isShopOpen && !isCasinoOpen && !isDevOpen && !isDead && fixicsActive) {
+                isFixicsOpen = true;
+                isMouseDown = false;
+                controls.unlock();
+                document.getElementById('fixicsMenu').style.display = 'block';
+            }
+        }
+
+        function closeFixicsMenu() {
+            isFixicsOpen = false;
+            canOpenFixics = false;
+            document.getElementById('fixicsMenu').style.display = 'none';
+            controls.lock();
+        }
+
+        function repairTool(slotNum) {
+            let targetKey = (slotNum === 1) ? axeLevel : (slotNum === 2 ? weaponLevel : (slotNum === 3 ? 6 : 7));
+            if (stats.money >= 30 && toolDurability[targetKey] < 100) {
+                stats.money -= 30;
+                toolDurability[targetKey] = 100;
+                document.getElementById('money').innerText = stats.money;
+                updateDurabilityUI();
+                showNotification('Инструмент/Стена починена!');
+                closeFixicsMenu();
+            }
+        }
+
+        function sellWoodToTruck() {
+            if (stats.wood > 0) {
+                let earned = stats.wood * 5;
+                stats.money += earned;
+                stats.wood = 0;
+                document.getElementById('money').innerText = stats.money;
+                document.getElementById('wood').innerText = stats.wood;
+                showNotification(`Продано дров в машину на ${earned} монет! 🚗🪙`);
+            } else {
+                showNotification('В инвентаре нет дров для продажи!');
+            }
+        }
+
+        function switchTool(level) {
+            normalAxe.visible = (level === 1);
+            goldAxe.visible = (level === 2);
+            chainsaw.visible = (level === 3);
+            pistol.visible = (level === 4);
+            ak47.visible = (level === 5);
+            handCube.visible = (level === 6 && !activeThrownCube);
+            handWall.visible = (level === 7);
+
+            const names = {
+                1: 'Обычный топор',
+                2: 'Золотой топор',
+                3: 'Бензопила',
+                4: 'Пистолет 🔫',
+                5: 'АК-47 🔥',
+                6: 'Взрывной куб 📦',
+                7: 'Защитная стена 🧱'
+            };
+            document.getElementById('axeLevel').innerText = names[level];
+            updateDurabilityUI();
+        }
+
+        function buyExplosiveCube() {
+            if (stats.money >= 500 && !unlockedCube) {
+                stats.money -= 500;
+                document.getElementById('money').innerText = stats.money;
+                unlockedCube = true;
+                document.getElementById('slot3').classList.remove('hidden');
+                document.getElementById('fixBtn3').classList.remove('hidden');
+                updateDurabilityUI();
+                closeShop();
+                showNotification('Куплен Взрывной куб! (Слот 3)');
+            }
+        }
+
+        function buyGoldAxe() {
+            if (stats.money >= 50 && !unlockedAxes[2]) {
+                stats.money -= 50;
+                document.getElementById('money').innerText = stats.money;
+                unlockedAxes[2] = true;
+                axeLevel = 2;
+                if (activeSlot === 1) switchTool(2);
+                closeShop();
+                showNotification('Куплен Золотой топор!');
+            }
+        }
+
+        function buyChainsaw() {
+            if (stats.money >= 150 && !unlockedAxes[3]) {
+                stats.money -= 150;
+                document.getElementById('money').innerText = stats.money;
+                unlockedAxes[3] = true;
+                axeLevel = 3;
+                if (activeSlot === 1) switchTool(3);
+                closeShop();
+                showNotification('Куплена Бензопила!');
+            }
+        }
+
+        function buyPistol() {
+            if (stats.money >= 200 && !unlockedWeapons[4]) {
+                stats.money -= 200;
+                document.getElementById('money').innerText = stats.money;
+                unlockedWeapons[4] = true;
+                weaponLevel = 4;
+                if (activeSlot === 2) switchTool(4);
+                closeShop();
+                showNotification('Куплен Пистолет!');
+            }
+        }
+
+        function buyAxeCannon() {
+            if (stats.money >= 300 && !unlockedWeapons[5]) {
+                stats.money -= 300;
+                document.getElementById('money').innerText = stats.money;
+                unlockedWeapons[5] = true;
+                weaponLevel = 5;
+                if (activeSlot === 2) switchTool(5);
+                closeShop();
+                showNotification('Куплен АК-47!');
+            }
+        }
+
+        function checkCollision(pos) {
+            const playerRadius = 0.4;
+            for (let i = 0; i < colliders.length; i++) {
+                let c = colliders[i];
+                if (c.type === 'cylinder') {
+                    let dx = pos.x - c.x;
+                    let dz = pos.z - c.z;
+                    if (Math.sqrt(dx * dx + dz * dz) < playerRadius + c.r) return true;
+                } else if (c.type === 'box') {
+                    let dx = Math.abs(pos.x - c.x);
+                    let dz = Math.abs(pos.z - c.z);
+                    if (dx < playerRadius + c.rx && dz < playerRadius + c.rz) return true;
+                }
+            }
+            return false;
+        }
+
+        let prevTime = performance.now();
+        let fixicsSpawnCountdown = 90;
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const time = performance.now();
+            const delta = (time - prevTime) / 1000;
+            prevTime = time;
+
+            gameTime += delta;
+
+            for (let i = activeWarnings.length - 1; i >= 0; i--) {
+                let w = activeWarnings[i];
+                w.life -= delta;
+                w.mesh.material.opacity = Math.max(0, w.life);
+                if (w.life <= 0) {
+                    scene.remove(w.mesh);
+                    activeWarnings.splice(i, 1);
+                }
+            }
+
+            if (bossActive && bossInstance) {
+                bossData.attackTimer -= delta;
+                if (bossData.attackTimer <= 0) {
+                    executeBossAttack();
+                    bossData.attackTimer = 5.0;
+                }
+            }
+
+            flyingPlates.forEach(p => {
+                p.angle += p.speed * delta;
+                p.mesh.position.x = Math.cos(p.angle) * p.radius;
+                p.mesh.position.z = Math.sin(p.angle) * p.radius;
+                p.mesh.rotation.y += 5.0 * delta;
+            });
+            
+            tarotCountdown -= delta;
+            let tarotSecs = Math.max(0, Math.ceil(tarotCountdown));
+            document.getElementById('tarotStatus').innerText = `Карта через ${tarotSecs}с`;
+            if (tarotCountdown <= 0) {
+                triggerTarotCard();
+                tarotCountdown = 30.0;
+            }
+
+            if (!fixicsActive) {
+                fixicsSpawnCountdown -= delta;
+                let mins = Math.floor(fixicsSpawnCountdown / 60);
+                let secs = Math.floor(fixicsSpawnCountdown % 60);
+                document.getElementById('fixicsStatus').innerText = `Прибудут через ${mins}:${secs < 10 ? '0' : ''}${secs}`;
+                
+                if (fixicsSpawnCountdown <= 0) {
+                    fixicsActive = true;
+                    fixicsGroup.visible = true;
+                    document.getElementById('fixicsStatus').innerText = 'На месте! У дома 🛠️';
+                    document.getElementById('fixicsStatus').style.color = '#f1c40f';
+                    showNotification('Фиксики прибыли на 30 секунд!');
+                    fixicsTimer = 30;
+                }
+            } else {
+                fixicsTimer -= delta;
+                if (fixicsTimer <= 0) {
+                    fixicsActive = false;
+                    fixicsGroup.visible = false;
+                    fixicsSpawnCountdown = 90;
+                    document.getElementById('fixicsStatus').innerText = 'Убежали (1:30)';
+                    document.getElementById('fixicsStatus').style.color = '#e74c3c';
+                }
+            }
+
+            let cycleProgress = (gameTime % 60) / 60; 
+            let isNight = cycleProgress > 0.5;
+
+            if (isNight && isRiding) {
+                isRiding = false;
+                document.getElementById('mode').innerText = 'Пешком';
+            }
+
+            let speed = isRiding ? 15.0 : 6.0;
+
+            if (isNight) {
+                scene.background.setHex(0x0b132b);
+                scene.fog.color.setHex(0x0b132b);
+                ambientLight.intensity = 0.15;
+                sun.intensity = 0.1;
+                document.getElementById('timeOfDay').innerText = 'Ночь 🌙';
+                
+                boars.forEach(b => {
+                    b.position.lerp(cavePos, delta * 3.0);
+                });
+
+                if (!hasMatedThisNight) {
+                    hasMatedThisNight = true;
+                    if (totalBoarsCount < MAX_BOARS) {
+                        totalBoarsCount += 2;
+                        if (totalBoarsCount > MAX_BOARS) totalBoarsCount = MAX_BOARS;
+                    }
+                    document.getElementById('boarsCount').innerText = '🐗 ' + totalBoarsCount;
+                }
+            } else {
+                scene.background.setHex(0x87CEEB);
+                scene.fog.color.setHex(0x87CEEB);
+                ambientLight.intensity = 0.6;
+                sun.intensity = 0.9;
+                document.getElementById('timeOfDay').innerText = 'День ☀️';
+                hasMatedThisNight = false;
+                
+                boars.forEach((b, index) => {
+                    if (index === 0) {
+                        let houseTarget = new THREE.Vector3(-8 + 2.5, getTerrainHeight(-8 + 2.5, -2), -2);
+                        b.position.lerp(houseTarget, delta * 2.0);
+                    } else {
+                        let data = boarData[index];
+                        data.timer -= delta;
+                        if (data.timer <= 0) {
+                            data.targetX = (Math.random() - 0.5) * 60;
+                            data.targetZ = (Math.random() - 0.5) * 60;
+                            data.timer = 5 + Math.random() * 5;
+                        }
+                        let targetVec = new THREE.Vector3(data.targetX, getTerrainHeight(data.targetX, data.targetZ), data.targetZ);
+                        b.position.lerp(targetVec, delta * 1.5);
+                    }
+                });
+            }
+
+            if (controls.isLocked && !isDead) {
+                const oldPosition = camera.position.clone();
+
+                if (moveForward) controls.moveForward(speed * delta);
+                if (moveBackward) controls.moveForward(-speed * delta);
+                if (moveLeft) controls.moveRight(-speed * delta);
+                if (moveRight) controls.moveRight(speed * delta);
+
+                camera.position.y = getTerrainHeight(camera.position.x, camera.position.z) + 1.6;
+
+                if (checkCollision(camera.position)) {
+                    camera.position.copy(oldPosition);
+                }
+            }
+
+            if (isMouseDown && targetedTree && !targetedTree.userData.isWild) {
+                let currentChopSpeed = (axeLevel === 3 ? 2.5 : (axeLevel === 2 ? 1.8 : 1.0));
+                targetedTree.userData.currentChop += currentChopSpeed * delta;
+
+                // АНИМАЦИЯ РУБКИ: Покачивание инструмента и дерева при ударах
+                let swingAnim = Math.sin(gameTime * 20) * 0.3;
+                if (activeSlot === 1) {
+                    if (axeLevel === 1) normalAxe.rotation.x = 0.2 + swingAnim;
+                    else if (axeLevel === 2) goldAxe.rotation.x = 0.2 + swingAnim;
+                    else if (axeLevel === 3) chainsaw.position.z = -0.6 + Math.sin(gameTime * 40) * 0.05;
+                }
+                // Дерево слегка наклоняется от ударов
+                let chopProgressRatio = targetedTree.userData.currentChop / targetedTree.userData.maxChop;
+                targetedTree.rotation.z = Math.sin(gameTime * 25) * 0.08 * (1 + chopProgressRatio);
+
+                let progressPct = (targetedTree.userData.currentChop / targetedTree.userData.maxChop) * 100;
+                document.getElementById('chopProgress').style.display = 'block';
+                document.getElementById('progressBar').style.width = Math.min(100, progressPct) + '%';
+
+                let activeDurKey = axeLevel;
+                toolDurability[activeDurKey] -= (axeLevel === 3 ? 0.3 : 0.1);
+                if (toolDurability[activeDurKey] < 0) toolDurability[activeDurKey] = 0;
+                updateDurabilityUI();
+
+                if (targetedTree.userData.currentChop >= targetedTree.userData.maxChop) {
+                    let woodGained = targetedTree.userData.wood * (doubleWoodActive ? 2 : 1);
+                    stats.wood += woodGained;
+                    document.getElementById('wood').innerText = stats.wood;
+                    showNotification(`Срублено дерево! +${woodGained} дров`);
+                    
+                    respawnTree(targetedTree);
+                    isMouseDown = false;
+                    targetedTree = null;
+                    document.getElementById('chopProgress').style.display = 'none';
+                    document.getElementById('progressBar').style.width = '0%';
+                }
+            } else {
+                // Возврат инструмента в исходное положение, если мы не рубим
+                if (activeSlot === 1) {
+                    normalAxe.rotation.x = 0;
+                    goldAxe.rotation.x = 0;
+                    chainsaw.position.z = 0;
+                }
+            }
+
+            if (activeThrownCube) {
+                let cube = activeThrownCube;
+                cube.mesh.position.lerp(cube.target, delta * 5.0);
+                cube.mesh.rotation.x += 5.0 * delta;
+                cube.mesh.rotation.y += 5.0 * delta;
+
+                if (cube.mesh.position.distanceTo(cube.target) < 1.0) {
+                    let pos = cube.mesh.position.clone();
+                    scene.remove(cube.mesh);
+                    createExplosion(pos);
+                    activeThrownCube = null;
+                    if (activeSlot === 3) handCube.visible = true;
+                }
+            }
+
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                let p = projectiles[i];
+                p.position.addScaledVector(p.velocity, delta);
+                p.life -= delta;
+
+                let hitSomething = false;
+                trees.forEach(t => {
+                    if (t.userData.isWild && p.position.distanceTo(t.position) < 1.5) {
+                        hitSomething = true;
+                        let woodGained = 2 * (doubleWoodActive ? 2 : 1);
+                        stats.wood += woodGained;
+                        document.getElementById('wood').innerText = stats.wood;
+                        respawnTree(t);
+                        showNotification('Выстрел уничтожил дикое дерево! +дрова');
+                    }
+                });
+
+                if (bossActive && bossInstance && p.position.distanceTo(bossInstance.position) < 3.0) {
+                    hitSomething = true;
+                    bossData.hp -= (weaponLevel === 5 ? 25 : 10);
+                    if (bossData.hp < 0) bossData.hp = 0;
+                    document.getElementById('bossHPBar').style.width = (bossData.hp / bossData.maxHp * 100) + '%';
+                    if (bossData.hp <= 0) defeatBoss();
+                }
+
+                if (p.life <= 0 || hitSomething) {
+                    scene.remove(p);
+                    projectiles.splice(i, 1);
+                }
+            }
+
+            if (camera.position.distanceTo(seller.position) < 3.5) {
+                openShop();
+            } else {
+                canOpenShop = true;
+            }
+
+            if (camera.position.distanceTo(casinoGroup.position) < 4.5) {
+                openCasino();
+            } else {
+                canOpenCasino = true;
+            }
+
+            if (fixicsActive && camera.position.distanceTo(fixicsGroup.position) < 3.5) {
+                openFixicsMenu();
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
